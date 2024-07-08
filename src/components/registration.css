@@ -1,0 +1,86 @@
+.login-form{
+    width: 50vw;
+    display: grid;
+    background: white;
+    padding: 50px !important;
+    font-size: 1vw;
+    border-radius:0 10px 10px 0 ;
+    
+  }
+  input{
+    margin-bottom: 30px;
+  }
+  
+  .login-box{
+    display: grid;
+    align-items: center;
+    height: 100vh;
+    width: 100%;
+  }
+  .container{
+    width: 70% !important;
+  }
+  
+  .background{
+    /* background: linear-gradient(to right, #f2709c, #ff9472); */
+    background-color: #f5f9fc;
+
+    width: 100vw;
+    height: 100vh;
+  }
+  .btnall.mt-3.mb-3.px-auto.text-center {
+    font-weight: 500;
+    text-align: center;
+    padding: 0 110px !important;
+    font-size: 18px !important;
+  }
+  p{
+    color: #969696;
+  }
+  .btnall{
+    /* background-color:white; */
+    font-weight: 500 !important;
+    letter-spacing: .3px;
+    height: 50px;
+    width: 100%;
+    font-size: medium;
+  
+  }
+  .mobile-img{
+    display: grid;
+    height: 20rem;
+  }
+  .left-background{
+    background-color: #013142;
+    color: white;
+    padding: 40px!important;
+    padding-bottom: 0 !important;
+    border-radius: 10px 0 0 10px;
+  }
+  
+  @media only screen and (max-width: 425px) {
+  form{
+    width: 66vw;
+  }
+  .login-form{
+    padding: 25px !important;
+    font-size: .8rem;
+    border-radius: 0 0 10px 10px ;
+    
+  }
+  .left-background{
+    padding: 20px !important;
+    padding-bottom: 0 !important;
+    border-radius: 10px 10px 0 0;
+  }
+  .container{
+    width: 80% !important;
+  }
+  .login-box{
+    
+  }
+  .btnall{
+    font-size: 14px !important;
+  }
+  
+  }
