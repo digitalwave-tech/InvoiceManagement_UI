@@ -82,7 +82,7 @@ function Register() {
             </div>
             <div class="col login-form">
               <form onSubmit={handleSubmit}>
-                <h2 className="font-weight-bold mb-3" style={{ marginTop: -20 }}>Registeration</h2>
+                <h2 className="font-weight-bold mb-3" style={{ marginTop: -20 }}>Registration</h2>
                 <FormGroup>
                   <Input
                     className="mb-3"

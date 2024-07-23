@@ -58,7 +58,7 @@ function Login() {
       //setShowAlert(true);
     }
     } catch (error) {
-      //alert('GST no invalid!!');
+      alert('GST number is Invalid');
       console.error('Error:', error);
       //setShowAlert(true);
     } finally {

@@ -2,10 +2,13 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import "../components/dashboard.css";
 import logo from '../components/images/logo-png.png';
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../components/AuthContext';
 import axios from 'axios';
 import { useNavigate } from "react-router-dom";
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import Template from '../components/InvoiceTemplate';
 
 function DashBoard() {
     const [rows, setRows] = useState([{ itemName: '', unit: '', price: '', amount: '' }]);
@@ -30,15 +33,17 @@ function DashBoard() {
     const { logout } = useContext(AuthContext);
     const [subtotal, setSubtotal] = useState(0);
     const [NetTotalAmt, setNetTotalAmt] = useState(0);
-    const [gstRate, setGSTRate] = useState();
-
+    const [sgstRate, setSGSTRate] = useState(0);
+    const [cgstRate, setCGSTRate] = useState(0);
+    const [invoiceData, setInvoiceData] = useState([]);
+    const templateRef = useRef();
     //const [isChecked, setIsChecked] = useState(false);
     const navigate = useNavigate();
 
     const initialState = {
         selectedddValue: 'Select Customer Name',
         tableData: [{ id: 1, itemName: '', unit: '', price: '', amount: '' }],
-        
+
     };
     const [tableData, setTableData] = useState(initialState.tableData);
     const [selectedddValue, setSelectedddValue] = useState(initialState.selectedddValue);
@@ -97,11 +102,11 @@ function DashBoard() {
 
     // }, [navigate]);
     useEffect(() => {
-       
-            getInvoiceData();
-        
 
-    },[user.token]);
+        getInvoiceData();
+
+
+    }, [user.token]);
 
     // window.addEventListener("beforeunload", (event) => {
 
@@ -130,7 +135,7 @@ function DashBoard() {
         }
 
         const invoicesToDisplay = selectedsearchInvoice ? filteredInvoices : invoices.msg;
-        
+
         return invoicesToDisplay.map((invoice, index) => {
             console.log('Invoice:', invoice);
             console.log('Invoice Amount:', invoice.amount);
@@ -152,7 +157,7 @@ function DashBoard() {
                     </td>
                     <td>{formattedDate}</td>
                     <td>{invoice.customerName}</td>
-                    <td>{"INV" + invoice.invoiceNo}</td>
+                    <td>{invoice.invoiceNo}</td>
                     <td>₹ {invoice.netAmt}</td>
                     <td class="text-end">
                         {/* <button type="button" class="btn btn-sm btn-square btn-danger">
@@ -164,6 +169,7 @@ function DashBoard() {
         });
     };
     const handleSelectInvoice = (invoiceNo) => {
+        console.log(invoiceNo);
         if (selectedInvoices.includes(invoiceNo)) {
             setSelectedInvoices(selectedInvoices.filter(id => id !== invoiceNo));
         } else {
@@ -330,14 +336,16 @@ function DashBoard() {
     const updateSubtotal = (data) => {
         const total = data.reduce((acc, row) => acc + parseFloat(row.amount || 0), 0);
         setSubtotal(total.toFixed(2));
-        netTotalAmount(gstRate, total);
+        netTotalAmount(sgstRate, cgstRate, total);
     };
 
-    const netTotalAmount = (gstRate, newSubtotal = subtotal) => {
+    const netTotalAmount = (sgstRate, cgstRate, newSubtotal = subtotal) => {
 
-        setGSTRate(gstRate);
-        const gstAmt = parseFloat(newSubtotal||0) * (parseFloat(gstRate) / 100||0);
-        const netamount = parseFloat(newSubtotal) + parseFloat(gstAmt);
+        setSGSTRate(sgstRate);
+        setCGSTRate(cgstRate);
+        const sgstAmt = parseFloat(newSubtotal || 0) * (parseFloat(sgstRate) / 100 || 0);
+        const cgstAmt = parseFloat(newSubtotal || 0) * (parseFloat(cgstRate) / 100 || 0);
+        const netamount = parseFloat(newSubtotal) + parseFloat(sgstAmt) + parseFloat(cgstAmt);
         setNetTotalAmt(netamount.toFixed(2));
     };
 
@@ -353,9 +361,10 @@ function DashBoard() {
                 const response = await axios.post('http://localhost:7116/api/controller/CreateInvoice', {
                     ///apiData
                     customerName: selectedddValue,
-                    subtotal: subtotal ,
-                    gstRate:gstRate,
-                    totalAmt:NetTotalAmt,
+                    subtotal: subtotal,
+                    sgstRate: sgstRate,
+                    cgstRate: cgstRate,
+                    totalAmt: NetTotalAmt,
                     details: tableData.map(({ itemName, unit, price, amount }) => ({
                         itemName: itemName,
                         quantity: unit,
@@ -378,10 +387,12 @@ function DashBoard() {
                     setSelectedddValue(initialState.selectedddValue);
                     setTableData(initialState.tableData);
                     setSubtotal('');
-                    setGSTRate('');
+                    setSGSTRate('');
+                    setCGSTRate('');
+
                     setNetTotalAmt('');
-                
-                    
+
+
                     getInvoiceData();
 
                 } else {
@@ -457,13 +468,66 @@ function DashBoard() {
 
     //calling invoice template on download click start
 
-    const handleDownloadPDF = async (event) => {
+    // const handleDownloadPDF = async (event) => {
+    //     try {
+
+    //         console.log(selectedInvoices);
+
+    //         if (selectedInvoices.length === 0 || selectedInvoices.length > 1) {
+    //             alert('Please select single invoice to download')
+    //         }
+    //         else {
+    //             console.log(selectedInvoices);
+    //             const response = await axios.post('http://localhost:7116/api/controller/GetInvoiceItemDetails', selectedInvoices,
+    //                 {
+    //                     headers: {
+    //                         Authorization: `Bearer ${user.token}`,
+    //                         'Content-Type': 'application/json'
+    //                     },
+    //                     responseType: 'blob',
+    //                 }
+    //             );
+
+    //             if (response.status === 200) {
+    //                 axios.defaults.headers.common['Authorization'] = `Bearer ${user.token}`;
+
+    //                 const blob = new Blob([response.data], { type: 'application/pdf' });
+    //                 const url = window.URL.createObjectURL(blob);
+
+    //                 const link = document.createElement('a');
+    //                 link.href = url;
+    //                 link.download = 'Invoice.pdf';
+    //                 document.body.appendChild(link);
+    //                 link.click();
+
+    //                 document.body.removeChild(link);
+    //                 window.URL.revokeObjectURL(url);
+
+
+    //                 //alert('Invoice Created');
+    //                 console.log('Invoice downloaded');
+    //             } else {
+    //                 console.log('Invoice download failed');
+    //                 // setShowAlert(true);
+    //             }
+    //         }
+
+    //     } catch (error) {
+    //         console.error('Error:', error);
+    //         // setShowAlert(true);
+    //     } finally {
+    //         // setLoading(false);
+    //     }
+    // };
+
+    const fetchData = async (event) => {
         try {
 
-            console.log(selectedInvoices);
+            console.log("FetchData - InvoiceNO selected", selectedInvoices);
 
             if (selectedInvoices.length === 0 || selectedInvoices.length > 1) {
                 alert('Please select single invoice to download')
+                return false;
             }
             else {
                 console.log(selectedInvoices);
@@ -472,29 +536,19 @@ function DashBoard() {
                         headers: {
                             Authorization: `Bearer ${user.token}`,
                             'Content-Type': 'application/json'
-                        },
-                        responseType: 'blob',
+                        }
                     }
                 );
 
                 if (response.status === 200) {
                     axios.defaults.headers.common['Authorization'] = `Bearer ${user.token}`;
+                    console.log("apiResponse", response.data.msg);
 
-                    const blob = new Blob([response.data], { type: 'application/pdf' });
-                    const url = window.URL.createObjectURL(blob);
-
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = 'Invoice.pdf';
-                    document.body.appendChild(link);
-                    link.click();
-
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-
+                    setInvoiceData(response.data.msg);
 
                     //alert('Invoice Created');
                     console.log('Invoice downloaded');
+                    return true;
                 } else {
                     console.log('Invoice download failed');
                     // setShowAlert(true);
@@ -506,6 +560,29 @@ function DashBoard() {
             // setShowAlert(true);
         } finally {
             // setLoading(false);
+        }
+    };
+
+    const download = async () => {
+        var result = await fetchData();
+        console.log("fetchData result", result);
+        if (result == true) {
+            if (invoiceData) {
+                const element = templateRef.current;
+                const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+                const data = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgProperties = pdf.getImageProperties(data);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProperties.height * pdfWidth) / imgProperties.width;
+
+                if (pdfHeight > pdf.internal.pageSize.getHeight()) {
+                    pdf.addImage(data, 'PNG', 0, 0, pdfWidth, pdf.internal.pageSize.getHeight());
+                } else {
+                    pdf.addImage(data, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                }
+                pdf.save('Invoice.pdf');
+            }
         }
     };
     //calling invoice template on download click end
@@ -537,17 +614,17 @@ function DashBoard() {
                         <div className="collapse navbar-collapse" id="sidebarCollapse">
                             <ul className="navbar-nav">
                                 <li className="nav-item">
-                                    <a className="nav-link" onClick={() => handleViewChange('dashboard')}>
+                                    <a className="nav-link" style={{ cursor: 'pointer' }} onClick={() => handleViewChange('dashboard')}>
                                         <i className="bi bi-house h4"></i> Dashboard
                                     </a>
                                 </li>
                                 <li className="nav-item">
-                                    <a className="nav-link" onClick={() => handleViewChange('invoice')}>
+                                    <a className="nav-link" style={{ cursor: 'pointer' }} onClick={() => handleViewChange('invoice')}>
                                         <i className="bi bi-bar-chart h4"></i> Invoices
                                     </a>
                                 </li>
                                 <li className="nav-item">
-                                    <a className="nav-link" onClick={() => handleViewChange('customer')}>
+                                    <a className="nav-link" style={{ cursor: 'pointer' }} onClick={() => handleViewChange('customer')}>
                                         <i className="bi bi-person-plus h4"></i> Customer
                                     </a>
                                 </li>
@@ -627,7 +704,12 @@ function DashBoard() {
                                                     <th scope="col">Invoice No</th>
                                                     <th scope="col">Amount</th>
                                                     <th class="text-center">
-                                                        <button class="btn btn-sm btn-primary" onClick={handleDownloadPDF}>
+                                                        {invoiceData && invoiceData.length > 0 && (
+                                                            <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '210mm' }}>
+                                                                <Template ref={templateRef} invoiceData={invoiceData} />
+                                                            </div>
+                                                        )}
+                                                        <button class="btn btn-sm btn-primary" onClick={download}>
                                                             <i class="bi bi-download"></i>
                                                         </button>
                                                     </th>
@@ -812,19 +894,30 @@ function DashBoard() {
                                                     <div class="col-3">
                                                         <input class="form-control form-control-sm text-end" readOnly="true"
                                                             value={subtotal}
-                                                            
+
                                                         ></input>
                                                     </div>
                                                 </div>
                                                 {/* <hr class="my-n2 bg-light" /> */}
                                                 <div class=" row d-flex justify-content-between mb-3  px-5 py-1">
                                                     <div class="col-3">
-                                                        GST (%)
+                                                        SGST (%)
                                                         <br />
                                                     </div>
                                                     <div class="col-3">
-                                                        <input class="form-control form-control-sm text-end" value={gstRate}
-                                                            onChange={(e) => netTotalAmount(e.target.value)} required
+                                                        <input class="form-control form-control-sm text-end" value={sgstRate}
+                                                            onChange={(e) => netTotalAmount(e.target.value, cgstRate)} required
+                                                        ></input>
+                                                    </div>
+                                                </div>
+                                                <div class=" row d-flex justify-content-between mb-3  px-5 py-1">
+                                                    <div class="col-3">
+                                                        CGST (%)
+                                                        <br />
+                                                    </div>
+                                                    <div class="col-3">
+                                                        <input class="form-control form-control-sm text-end" value={cgstRate}
+                                                            onChange={(e) => netTotalAmount(sgstRate, e.target.value)} required
                                                         ></input>
                                                     </div>
                                                 </div>
@@ -842,8 +935,7 @@ function DashBoard() {
                                                 </div>
                                                 <div class="d-flex justify-content-between px-5 py-3">
                                                     <div class="">
-                                                        <button className="btn  btn-sm text-dark d-flex align-items-center border-1 border-white me-2 shadow-none"
-                                                            style={{ backgroundColor: "#f5f9fc" }}
+                                                        <button className="btn btn-secondary btn-sm text-dark d-flex align-items-center border-1 border-white me-2 shadow-none"
                                                         >
                                                             <span className="ms-1">Submit</span>
                                                         </button>
@@ -912,7 +1004,7 @@ function DashBoard() {
                                                 </div>
                                             </div>
                                             <div class="card-footer border-0 mb-3 bg-white" style={{ marginLeft: "-20px" }}>
-                                                <button className="btn btn-primary btn-sm d-flex align-items-center me-2 bg-light border-1 border-black shadow-none text-dark">
+                                                <button className="btn btn-secondary btn-sm d-flex align-items-center me-2  shadow-none text-dark">
                                                     <span className="ms-1">Submit</span>
                                                 </button>
                                             </div>
